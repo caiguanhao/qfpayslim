@@ -76,7 +76,7 @@ func (c *Client) NewRequest(ctx context.Context, method, url string, reqBody int
 
 // MakePayment creates a payment request to the QFPay API.
 // It accepts payment type, transaction number, item name, and amount in cents.
-func (c *Client) MakePayment(ctx context.Context, payType, outTradeNo, goodsName string, cents int) (*Request, error) {
+func (c *Client) MakePayment(ctx context.Context, payType, outTradeNo, goodsName string, cents int, extra map[string]string) (*Request, error) {
 	payload := url.Values{}
 	payload.Set("txamt", strconv.Itoa(cents))
 	payload.Set("txcurrcd", "HKD")
@@ -84,6 +84,9 @@ func (c *Client) MakePayment(ctx context.Context, payType, outTradeNo, goodsName
 	payload.Set("out_trade_no", outTradeNo)
 	payload.Set("goods_name", goodsName)
 	payload.Set("txdtm", time.Now().UTC().Format("2006-01-02 15:04:05"))
+	for k, v := range extra {
+		payload.Set(k, v)
+	}
 	req, err := c.NewRequest(ctx, "POST", "/trade/v1/payment", strings.NewReader(payload.Encode()))
 	if err != nil {
 		return nil, err
