@@ -151,6 +151,26 @@ func (c *Client) Query(ctx context.Context, outTradeNo ...string) ([]QueryRespon
 	return responses, err
 }
 
+// QuerySyssn sends a request to inquire about past payment transactions by syssn.
+func (c *Client) QuerySyssn(ctx context.Context, syssn ...string) ([]QueryResponse, error) {
+	if len(syssn) < 1 {
+		return nil, nil
+	}
+	payload := url.Values{}
+	payload.Set("syssn", strings.Join(syssn, ","))
+	req, err := c.NewRequest(ctx, "POST", "/trade/v1/query", strings.NewReader(payload.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-QF-APPCODE", c.AppCode)
+	req.Header.Set("X-QF-SIGN", c.GenerateSign(payload))
+	req.Header.Set("X-QF-SIGNTYPE", "MD5")
+	var responses []QueryResponse
+	err = req.Do(&responses, "data.*")
+	return responses, err
+}
+
 // GenerateSign generates a signature for authenticating API requests.
 func (c *Client) GenerateSign(payload url.Values) string {
 	parts := make([]string, len(payload))
