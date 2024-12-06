@@ -98,6 +98,23 @@ func (c *Client) MakePayment(ctx context.Context, payType, outTradeNo, goodsName
 	return req, nil
 }
 
+// CloseSyssn creates a close order request by syssn.
+func (c *Client) CloseSyssn(ctx context.Context, syssn string, cents int) (*Request, error) {
+	payload := url.Values{}
+	payload.Set("syssn", syssn)
+	payload.Set("txamt", strconv.Itoa(cents))
+	payload.Set("txdtm", time.Now().UTC().Format("2006-01-02 15:04:05"))
+	req, err := c.NewRequest(ctx, "POST", "/trade/v1/close", strings.NewReader(payload.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-QF-APPCODE", c.AppCode)
+	req.Header.Set("X-QF-SIGN", c.GenerateSign(payload))
+	req.Header.Set("X-QF-SIGNTYPE", "MD5")
+	return req, nil
+}
+
 // QueryResponse holds the information returned from QFPay API for a payment request.
 // Fields included match the JSON response properties returned from the API.
 type QueryResponse struct {
