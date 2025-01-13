@@ -98,6 +98,46 @@ func (c *Client) MakePayment(ctx context.Context, payType, outTradeNo, goodsName
 	return req, nil
 }
 
+// RefundResponse holds the information returned from QFPay API for a refund request.
+type RefundResponse struct {
+	Syssn             string `json:"syssn"`                // Refund Transaction ID referring to the newly created refund transaction
+	OrigSyssn         string `json:"orig_syssn"`           // Original Transaction ID, previous transaction ID referring to the original transaction that has been refunded
+	Txamt             string `json:"txamt"`                // Amount of the refund. Unit in cents (i.e. 100 = $1)
+	Sysdtm            string `json:"sysdtm"`               // System transaction time. Format: YYYY-MM-DD hh:mm:ss
+	Respcd            string `json:"respcd"`               // Return code, 0000-Request successful. 1143/1145 - merchants are required to continue to query the refund transaction result.
+	Resperr           string `json:"resperr"`              // Response message
+	CashFee           string `json:"cash_fee"`             // Actual payment amount by user = transaction amount - discounts
+	CashFeeType       string `json:"cash_fee_type"`        // Actual payment currency e.g. CNY
+	CashRefundFee     string `json:"cash_refund_fee"`      // Actual refund amount
+	CashRefundFeeType string `json:"cash_refund_fee_type"` // Actual refund currency e.g. CNY
+}
+
+// Refunded returns true if the refund request was successful.
+func (res RefundResponse) Refunded() bool {
+	return res.Respcd == "0000"
+}
+
+// Refund creates a refund request to the QFPay API.
+// It accepts the transaction number, the refund trade number, and the amount in cents.
+func (c *Client) Refund(ctx context.Context, syssn string, outTradeNo string, cents int) (*RefundResponse, error) {
+	payload := url.Values{}
+	payload.Set("syssn", syssn)
+	payload.Set("out_trade_no", outTradeNo)
+	payload.Set("txamt", strconv.Itoa(cents))
+	payload.Set("txdtm", time.Now().UTC().Format("2006-01-02 15:04:05"))
+	req, err := c.NewRequest(ctx, "POST", "/trade/v1/refund", strings.NewReader(payload.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-QF-APPCODE", c.AppCode)
+	req.Header.Set("X-QF-SIGN", c.GenerateSign(payload))
+	req.Header.Set("X-QF-SIGNTYPE", "MD5")
+	var response RefundResponse
+	err = req.Do(&response)
+	return &response, err
+}
+
 // CloseSyssn creates a close order request by syssn.
 func (c *Client) CloseSyssn(ctx context.Context, syssn string, cents int) (*Request, error) {
 	payload := url.Values{}
